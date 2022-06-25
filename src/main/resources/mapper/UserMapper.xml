@@ -53,6 +53,7 @@
                 #{password},
                 #{salt},
                 #{email},
+                #{type},
                 #{status},
                 #{activationCode},
                 #{headerUrl},
