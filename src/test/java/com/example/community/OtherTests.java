@@ -19,9 +19,11 @@ public class OtherTests {
     @Value("${server.servlet.context-path}")
     private String CONTEXT_PATH;
 
+    @Value("${kaptcha.image.width}")
+    private String imageWidth;
+
     @Test
     void test(){
-        System.out.println(DOMAIN);
-        System.out.println(CONTEXT_PATH);
+        System.out.println(imageWidth);
     }
 }
