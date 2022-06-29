@@ -1,0 +1,37 @@
+package com.example.community.controller.interceptor;
+
+import com.example.community.annotation.LoginRequired;
+import com.example.community.util.HostHolder;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.method.HandlerMethod;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.lang.reflect.Method;
+
+/**
+ * @Author INSLYAB
+ * @Date 2022/6/29 13:07
+ */
+@Component
+public class LoginRequiredInterceptor implements HandlerInterceptor {
+
+    @Autowired
+    private HostHolder hostHolder;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        if(handler instanceof HandlerMethod){
+            HandlerMethod handlerMethod = (HandlerMethod) handler;
+            Method method = handlerMethod.getMethod();
+            LoginRequired loginRequired = method.getAnnotation(LoginRequired.class);
+            if(loginRequired != null && hostHolder.getUser() == null){
+                response.sendRedirect(request.getContextPath() + "/login");
+                return false;
+            }
+        }
+        return true;
+    }
+}
