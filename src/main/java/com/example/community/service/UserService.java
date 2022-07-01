@@ -157,4 +157,18 @@ public class UserService implements CommunityConstant {
     public int updateHeader(int userId, String headerUrl){
         return userMapper.updateHeader(userId, headerUrl);
     }
+
+    public Map<String, Object> updatePassword(String oldPassword, String newPassword, User user){
+        Map<String, Object> map = new HashMap<>();
+
+        oldPassword = oldPassword + user.getSalt();
+        oldPassword = CommunityUtil.md5(oldPassword);
+        if(!oldPassword.equals(user.getPassword())){
+            map.put("passwordMsg","旧密码不正确!");
+            return map;
+        }
+        newPassword = CommunityUtil.md5(newPassword + user.getSalt());
+        userMapper.updatePassword(user.getId(), newPassword);
+        return map;
+    }
 }

@@ -22,6 +22,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Map;
 
 /**
  * @Author INSLYAB
@@ -99,5 +100,17 @@ public class UserController {
         } catch (IOException e) {
             logger.error("读取头像失败：" + e.getMessage());
         }
+    }
+
+    @LoginRequired
+    @RequestMapping(path = "/updatePassword", method = RequestMethod.POST)
+    public String updatePassword(String newPassword, String oldPassword, Model model){
+        User user = hostHolder.getUser();
+        Map<String, Object> map = userService.updatePassword(oldPassword, newPassword, user);
+        if(map.containsKey("passwordMsg")){
+            model.addAttribute("passwordMsg",map.get("passwordMsg"));
+            return "/site/setting";
+        }
+        return "redirect:/logout";
     }
 }
