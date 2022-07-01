@@ -1,6 +1,8 @@
 package com.example.community;
 
+import com.example.community.util.SensitiveFilter;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ContextConfiguration;
@@ -22,8 +24,12 @@ public class OtherTests {
     @Value("${kaptcha.image.width}")
     private String imageWidth;
 
+    @Autowired
+    private SensitiveFilter sensitiveFilter;
+
     @Test
     void test(){
-        System.out.println(imageWidth);
+        String text = "afabc";
+        System.out.println(sensitiveFilter.filter(text));
     }
 }
