@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.*;
  * @Date 2022/6/27 21:08
  */
 @Mapper
+@Deprecated
 public interface LoginTicketMapper {
 
     @Insert({
