@@ -1,10 +1,8 @@
 package com.example.community;
 
-import org.junit.jupiter.api.Test;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.Stack;
 
 /**
  * @Author INSLYAB
@@ -12,9 +10,21 @@ import java.util.Stack;
  */
 public class Tests {
 
-    @Test
-    public void test(){
-        System.out.println((2592000 * 1000));
+    public static void main(String[] args) {
+        System.out.print(1);
+    }
+
+    public static int god(int m, int n){
+        while(n != 0){
+            int r = m % n;
+            m = n;
+            n = r;
+        }
+        return m;
+    }
+
+    public void print(int value){
+
     }
 
     public Boolean function(String code){
