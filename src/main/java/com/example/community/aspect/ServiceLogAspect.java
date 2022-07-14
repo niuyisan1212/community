@@ -28,8 +28,12 @@ public class ServiceLogAspect {
     }
 
     @Before("pointcut()")
-    public void befor(JoinPoint joinPoint){
+    public void before(JoinPoint joinPoint){
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+        if(attributes == null){
+            //todo 非用户调用controller时暂时不做日志处理
+            return;
+        }
         HttpServletRequest request = attributes.getRequest();
         String ip = request.getRemoteHost();
         String now = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date());
