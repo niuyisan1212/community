@@ -1,3 +1,9 @@
+$(function (){
+    $("#topBtn").click(setTop);
+    $("#wonderfulBtn").click(setWonderful);
+    $("#deleteBtn").click(setDelete);
+});
+
 function like(btn, entityType, entityId, entityUserId,postId){
     $.post(
         CONTEXT_PATH + "/like",
@@ -12,4 +18,50 @@ function like(btn, entityType, entityId, entityUserId,postId){
             }
         }
     )
+}
+
+function setTop(){
+    $.post(
+      CONTEXT_PATH + "/discuss/top",
+        {"id":$("#postId").val()},
+        function (data){
+          data = $.parseJSON(data);
+          if(data.code == 200){
+              $("#topBtn").text(data.type==1?'取消置顶':'置顶');
+          }else{
+              alert(data.msg);
+          }
+        }
+    );
+}
+
+function setWonderful(){
+    $.post(
+        CONTEXT_PATH + "/discuss/wonderful",
+        {"id":$("#postId").val()},
+        function (data){
+            data = $.parseJSON(data);
+            if(data.code == 200){
+                $("#wonderfulBtn").text(data.status==1?'取消加精':'加精');
+            }else{
+                alert(data.msg);
+            }
+        }
+    );
+}
+
+function setDelete(){
+    $.post(
+        CONTEXT_PATH + "/discuss/delete",
+        {"id":$("#postId").val()},
+        function (data){
+            data = $.parseJSON(data);
+            if(data.code == 200){
+                location.href = CONTEXT_PATH + "/index";
+                // $("#deleteBtn").attr("disabled","disabled");
+            }else{
+                alert(data.msg);
+            }
+        }
+    );
 }
