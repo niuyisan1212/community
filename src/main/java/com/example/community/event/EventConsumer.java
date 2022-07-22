@@ -8,18 +8,31 @@ import com.example.community.service.DiscussPostService;
 import com.example.community.service.ElasticsearchService;
 import com.example.community.service.MessageService;
 import com.example.community.util.CommunityConstant;
+import com.example.community.util.CommunityUtil;
+import com.qiniu.common.QiniuException;
+import com.qiniu.common.Zone;
+import com.qiniu.http.Response;
+import com.qiniu.storage.Configuration;
+import com.qiniu.storage.Region;
+import com.qiniu.storage.UploadManager;
+import com.qiniu.util.Auth;
+import com.qiniu.util.StringMap;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Component;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 
 /**
  * @Author INSLYAB
@@ -39,11 +52,23 @@ public class EventConsumer implements CommunityConstant {
     @Autowired
     private ElasticsearchService elasticsearchService;
 
+    @Autowired
+    private ThreadPoolTaskScheduler taskScheduler;
+
     @Value("${wk.image.storage}")
     private String wkImageStorage;
 
     @Value("${wk.image.command}")
     private String wkImageCommand;
+
+    @Value("${qiniu.key.access}")
+    private String accessKey;
+
+    @Value("${qiniu.key.secret}")
+    private String secretKey;
+
+    @Value("${qiniu.bucket.share.name}")
+    private String shareBucketName;
 
     @KafkaListener(topics = {TOPIC_COMMENT, TOPIC_LIKE, TOPIC_FOLLOW})
     public void handleCommentMessage(ConsumerRecord record){
@@ -127,6 +152,76 @@ public class EventConsumer implements CommunityConstant {
             logger.info("生成长图成功：" + cmd);
         } catch (IOException e) {
             logger.error("生成长图失败：" + e.getMessage());
+        }
+        //启用定时器， 监视该图片 一旦生成 则上传七牛云
+        UploadTask task = new UploadTask(fileName, suffix);
+        Future future = taskScheduler.scheduleAtFixedRate(task, 500);
+        task.setFuture(future);
+    }
+
+    class UploadTask implements Runnable{
+
+        private String fileName;
+
+        private String suffix;
+
+        //用来停止定时器的任务返回值
+        private Future future;
+
+        // 最长运行时间 最多尝试次数
+        private long startTime;
+        private int uploadTimes;
+
+        public UploadTask(String fileName, String suffix){
+            this.fileName = fileName;
+            this.suffix = suffix;
+            this.startTime = System.currentTimeMillis();
+        }
+
+        public void setFuture(Future future) {
+            this.future = future;
+        }
+
+        @Override
+        public void run() {
+            if(System.currentTimeMillis() - startTime > 30000){
+                logger.error("执行时间过长,任务终止:" +fileName);
+                future.cancel(true);
+                return;
+            }
+            if(this.uploadTimes >= 3){
+                logger.error("尝试次数过多,任务终止:" +fileName);
+                future.cancel(true);
+                return;
+            }
+            String path = wkImageStorage + "/" + fileName + suffix;
+            File file = new File(path);
+            if(file.exists()){
+                logger.info(String.format("开始第%d次上传[%s].", ++uploadTimes, fileName));
+                StringMap policy = new StringMap();
+                policy.put("returnBody", CommunityUtil.getJsonString(200));
+                //生成凭证信息
+                Auth auth = Auth.create(accessKey, secretKey);
+                String uploadToken = auth.uploadToken(shareBucketName, fileName, 3600, policy);
+                //指定上传机房
+                UploadManager manager = new UploadManager(new Configuration(Region.region2()));
+                try{
+                    Response response = manager.put(
+                            path, fileName, uploadToken, null, "image/"+suffix, false);
+                    JSONObject json = JSONObject.parseObject(response.bodyString());
+                    if(json == null || json.get("code") == null || !json.get("code").equals(200)){
+                        logger.info(String.format("第%d次上传失败[%s].",uploadTimes,fileName));
+                    }else{
+                        logger.info(String.format("第%d次上传成功[%s].",uploadTimes,fileName));
+                        future.cancel(true);
+                    }
+                }catch (QiniuException e){
+                    logger.info(String.format("第%d次上传失败[%s].",uploadTimes,fileName));
+                }
+
+            }else{
+                logger.info("等待图片生成[" + fileName + "].");
+            }
         }
     }
 }
