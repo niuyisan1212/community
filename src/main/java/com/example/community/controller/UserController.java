@@ -1,10 +1,11 @@
 package com.example.community.controller;
 
 import com.example.community.annotation.LoginRequired;
+import com.example.community.entity.Comment;
+import com.example.community.entity.DiscussPost;
+import com.example.community.entity.Page;
 import com.example.community.entity.User;
-import com.example.community.service.FollowService;
-import com.example.community.service.LikeService;
-import com.example.community.service.UserService;
+import com.example.community.service.*;
 import com.example.community.util.CommunityConstant;
 import com.example.community.util.CommunityUtil;
 import com.example.community.util.HostHolder;
@@ -26,6 +27,9 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -67,6 +71,12 @@ public class UserController implements CommunityConstant {
 
     @Autowired
     private FollowService followService;
+
+    @Autowired
+    private DiscussPostService discussPostService;
+
+    @Autowired
+    private CommentService commentService;
 
     @Autowired
     private HostHolder hostHolder;
@@ -175,6 +185,56 @@ public class UserController implements CommunityConstant {
             hasFollowed = followService.hasFollowed(hostHolder.getUser().getId(), ENTITY_TYPE_USER, userId);
         }
         model.addAttribute("hasFollowed",hasFollowed);
+        model.addAttribute("profile",true);
         return "/site/profile";
+    }
+
+
+    @RequestMapping(path = "/myPost/{userId}", method = RequestMethod.GET)
+    public String getMyPostPage(Model model, Page page,
+                               @PathVariable(name = "userId") int userId){
+        page.setLimit(5);
+        page.setRows(discussPostService.findDiscussPostRows(userId));
+        page.setPath("/user/myPost/" + userId);
+
+        List<DiscussPost> discussPosts = discussPostService.findDiscussPosts(userId, page.getOffset(), page.getLimit(), 0);
+        List<Map<String, Object>> list = new ArrayList<>();
+        if(discussPosts != null){
+            for(DiscussPost discussPost : discussPosts){
+                Map<String, Object> map = new HashMap<>();
+                map.put("post",discussPost);
+                long likeCount = likeService.findEntityLikeCount(ENTITY_TYPE_POST, discussPost.getId());
+                map.put("likeCount", likeCount);
+                list.add(map);
+            }
+        }
+        model.addAttribute("discussPosts", list);
+        model.addAttribute("rows",page.getRows());
+        model.addAttribute("myPost",true);
+        return "/site/my-post";
+    }
+
+    @RequestMapping(path = "/myReply/{userId}", method = RequestMethod.GET)
+    public String getMyReplyPage(Model model, Page page,
+                               @PathVariable(name = "userId") int userId){
+        page.setLimit(5);
+        page.setRows(commentService.findCommentCountByUserId(userId));
+        page.setPath("/user/myReply/" + userId);
+
+        List<Comment> comments = commentService.findCommentByUserId(userId, page.getOffset(), page.getLimit());
+        List<Map<String, Object>> list = new ArrayList<>();
+        if(comments != null){
+            for(Comment comment : comments){
+                Map<String, Object> map = new HashMap<>();
+                DiscussPost discussPost = discussPostService.findDiscussPostById(comment.getEntityId());
+                map.put("post",discussPost);
+                map.put("comment", comment);
+                list.add(map);
+            }
+        }
+        model.addAttribute("comments", list);
+        model.addAttribute("rows",page.getRows());
+        model.addAttribute("myReply",true);
+        return "/site/my-reply";
     }
 }
