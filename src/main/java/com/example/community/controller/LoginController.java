@@ -15,10 +15,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.*;
 
 import javax.imageio.ImageIO;
 import javax.servlet.http.Cookie;
@@ -59,6 +56,11 @@ public class LoginController implements CommunityConstant {
     @RequestMapping(path = "/login", method = RequestMethod.GET)
     public String getLoginPage(){
         return "/site/login";
+    }
+
+    @RequestMapping(path = "/forget", method = RequestMethod.GET)
+    public String getForgetPage(){
+        return "/site/forget";
     }
 
     @RequestMapping(path = "/register", method = RequestMethod.POST)
@@ -111,6 +113,51 @@ public class LoginController implements CommunityConstant {
         } catch (IOException e){
             logger.error("响应验证码失败" + e.getMessage());
         }
+    }
+
+    @RequestMapping(path = "/code", method = RequestMethod.POST)
+    @ResponseBody
+    public String getCode(String email, HttpServletResponse response){
+        String code = kaptchaProducer.createText();
+        //向邮箱发送验证码
+        Map<String, Object> map = userService.sendCode(email, code);
+        if(map.containsKey("emailMsg")){
+            return CommunityUtil.getJsonString(405,"发送验证码失败,请检查邮箱是否正确");
+        }
+        String codeOwener = CommunityUtil.generateUUID();
+        Cookie cookie = new Cookie("codeOwener", codeOwener);
+        cookie.setMaxAge(300);
+        cookie.setPath(CONTEXT_PATH);
+        response.addCookie(cookie);
+        String redisKey = RedisKeyUtil.getCodeKey(codeOwener);
+        redisTemplate.opsForValue().set(redisKey, code, 300, TimeUnit.SECONDS);
+        return CommunityUtil.getJsonString(200,"发送验证码成功");
+    }
+
+    @RequestMapping(path = "/resetPassword", method = RequestMethod.POST)
+    public String resetPassword(String newPassword, String code, String email,
+                                @CookieValue("codeOwener") String codeOwener,
+                                Model model){
+        String real_code = null;
+        if(StringUtils.isNotBlank(codeOwener)){
+            String redisKey = RedisKeyUtil.getCodeKey(codeOwener);
+            real_code = (String) redisTemplate.opsForValue().get(redisKey);
+        }
+        if(StringUtils.isBlank(real_code) || StringUtils.isBlank(code) || !code.equalsIgnoreCase(real_code)){
+            model.addAttribute("codeMsg","验证码不正确!");
+            model.addAttribute("email", email);
+            return "/site/forget";
+        }
+        Map<String, Object> map = userService.resetPassword(newPassword, email);
+        if(map.containsKey("success")){
+            return "redirect:/login";
+        }else{
+            model.addAttribute("emailMsg", map.get("emailMsg"));
+            model.addAttribute("passwordMsg", map.get("passwordMsg"));
+            model.addAttribute("email", email);
+            return "/site/forget";
+        }
+
     }
 
     @RequestMapping(path = "/login", method = RequestMethod.POST)

@@ -12,6 +12,7 @@ public class RedisKeyUtil {
     private static final String PREFIX_FOLLOWEE = "followee";
     private static final String PREFIX_FOLLOWER = "follower";
     private static final String PREFIX_KAPTCHA = "kaptcha";
+    private static final String PREFIX_CODE = "code";
     private static final String PREFIX_TICKET = "ticket";
     private static final String PREFIX_USER = "user";
     private static final String PREFIX_UV = "uv";
@@ -41,6 +42,11 @@ public class RedisKeyUtil {
     //验证码
     public static String getKaptchaKey(String owener){
         return PREFIX_KAPTCHA + SPLIT + owener;
+    }
+
+    //找回密码验证码
+    public static String getCodeKey(String owener){
+        return PREFIX_CODE + SPLIT + owener;
     }
 
 
